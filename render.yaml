@@ -1,0 +1,36 @@
+# Render Blueprint — deploys the NestJS backend on Render's free tier.
+# Database is hosted separately on Neon (free Postgres) — set DATABASE_URL below.
+#
+# Usage: in Render, "New +" -> "Blueprint" -> connect this repo.
+# Then fill the two secrets marked `sync: false` (DATABASE_URL, FRONTEND_URL).
+
+services:
+  - type: web
+    name: school-erp-backend
+    runtime: node
+    plan: free
+    region: singapore # closest free region to Nepal
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter backend build
+    startCommand: pnpm --filter backend start:prod
+    healthCheckPath: /api/v1/settings
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Neon connection string — paste from the Neon dashboard (include ?sslmode=require)
+      - key: DATABASE_URL
+        sync: false
+      # Your Vercel URL(s), comma-separated, no trailing slash
+      # e.g. https://school-erp.vercel.app
+      - key: FRONTEND_URL
+        sync: false
+      # Auto-generated strong secrets
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
