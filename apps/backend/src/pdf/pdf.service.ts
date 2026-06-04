@@ -18,6 +18,19 @@ const BORDER = '#e5e7eb';
 export class PdfService {
   constructor(private prisma: PrismaService) {}
 
+  /** Embed a base64 PNG/JPEG logo (data URL) at the top-right. SVG/others skipped. */
+  private drawLogo(doc: Doc, logoUrl?: string) {
+    if (!logoUrl) return;
+    const match = /^data:image\/(png|jpe?g);base64,(.+)$/i.exec(logoUrl);
+    if (!match) return; // pdfkit can't embed SVG/WEBP — skip silently
+    try {
+      const buffer = Buffer.from(match[2], 'base64');
+      doc.image(buffer, 470, 45, { fit: [75, 75], align: 'right' });
+    } catch {
+      // never let a bad image break the document
+    }
+  }
+
   private async getSchool() {
     const s = await this.prisma.schoolSettings.findFirst();
     return {
@@ -28,6 +41,7 @@ export class PdfService {
       invoiceFooter: s?.invoiceFooter ?? '',
       receiptFooter: s?.receiptFooter ?? '',
       primary: s?.primaryColor ?? PRIMARY,
+      logoUrl: s?.logoUrl ?? '',
     };
   }
 
@@ -54,13 +68,16 @@ export class PdfService {
     return doc;
   }
 
-  private header(doc: Doc, school: { name: string; address: string; phone: string; email: string; primary: string }, docTitle: string) {
-    doc.fillColor(school.primary || PRIMARY).font('Helvetica-Bold').fontSize(20).text(school.name, 50, 50);
+  private header(doc: Doc, school: { name: string; address: string; phone: string; email: string; primary: string; logoUrl?: string }, docTitle: string) {
+    // Draw the uploaded logo (top-right) if it's an embeddable PNG/JPEG data URL.
+    this.drawLogo(doc, school.logoUrl);
+
+    doc.fillColor(school.primary || PRIMARY).font('Helvetica-Bold').fontSize(20).text(school.name, 50, 50, { width: 380 });
     doc.fillColor(MUTED).font('Helvetica').fontSize(9);
     const lines = [school.address, [school.phone, school.email].filter(Boolean).join(' | ')].filter(Boolean);
-    lines.forEach((l) => doc.text(l));
+    lines.forEach((l) => doc.text(l, { width: 380 }));
     doc.moveDown(0.5);
-    doc.fillColor('#111827').font('Helvetica-Bold').fontSize(14).text(docTitle, { align: 'right' });
+    doc.fillColor('#111827').font('Helvetica-Bold').fontSize(14).text(docTitle, 50, doc.y, { align: 'right' });
     doc.moveTo(50, doc.y + 4).lineTo(545, doc.y + 4).strokeColor(BORDER).stroke();
     doc.moveDown(1);
   }

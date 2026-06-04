@@ -26,6 +26,9 @@ git push -u origin main
 
 ## 1. Database — Neon (free Postgres)
 
+> ⚠️ NEVER paste your real connection string (with password) into any file you
+> commit to git. Keep it only in Render's dashboard / your local untracked `.env`.
+
 1. Go to **https://neon.tech** → sign up → **Create project**.
 2. Region: pick **Asia Pacific (Singapore)** — closest to Nepal.
 3. After it's created, open **Connection Details** → copy the **connection string**.

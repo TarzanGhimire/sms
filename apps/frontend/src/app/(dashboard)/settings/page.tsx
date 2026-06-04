@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { School, Palette, Receipt, Download, Loader2, Save } from 'lucide-react';
+import { School, Palette, Receipt, Download, Loader2, Save, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm<Partial<SchoolSettings>>();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<Partial<SchoolSettings>>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoUrl = watch('logoUrl');
 
   useEffect(() => {
     settingsService.get()
@@ -29,6 +31,50 @@ export default function SettingsPage() {
       .catch(() => toast({ variant: 'destructive', title: 'Failed to load settings' }))
       .finally(() => setLoading(false));
   }, [reset]);
+
+  // Read a local image file, downscale it (max 400px) to keep storage small,
+  // and store it as a data URL directly in the logoUrl field.
+  const handleLogoFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Please choose an image file (PNG, JPG, SVG, WEBP)' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Image too large', description: 'Max 5 MB.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      // SVGs are tiny and vector — store as-is without rasterizing.
+      if (file.type === 'image/svg+xml') {
+        setValue('logoUrl', src, { shouldDirty: true });
+        return;
+      }
+      const img = new window.Image();
+      img.onload = () => {
+        const max = 400;
+        const scale = Math.min(1, max / img.width, max / img.height);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setValue('logoUrl', src, { shouldDirty: true });
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        // PNG preserves transparency (common for logos).
+        setValue('logoUrl', canvas.toDataURL('image/png'), { shouldDirty: true });
+      };
+      img.onerror = () => toast({ variant: 'destructive', title: 'Could not read that image' });
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const onSubmit = async (data: Partial<SchoolSettings>) => {
     setSaving(true);
@@ -46,7 +92,8 @@ export default function SettingsPage() {
         email: str(data.email),
         website: str(data.website),
         registrationNumber: str(data.registrationNumber),
-        logoUrl: str(data.logoUrl),
+        // Send logo as-is: a data URL to set it, or '' to clear it. (undefined = unchanged)
+        logoUrl: data.logoUrl == null ? undefined : data.logoUrl,
         primaryColor: str(data.primaryColor),
         accentColor: str(data.accentColor),
         invoiceFooter: str(data.invoiceFooter),
@@ -142,7 +189,49 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="space-y-1.5"><Label>Logo URL</Label><Input {...register('logoUrl')} placeholder="https://..." /></div>
+            <div className="space-y-2">
+              <Label>School Logo</Label>
+              <div className="flex items-center gap-4">
+                <div className="h-20 w-20 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt="School logo" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleLogoFile(f);
+                      e.target.value = ''; // allow re-selecting the same file
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-1" /> {logoUrl ? 'Change' : 'Upload'} Logo
+                    </Button>
+                    {logoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setValue('logoUrl', '', { shouldDirty: true })}
+                      >
+                        <X className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG, JPG, SVG or WEBP. Auto-resized. Click <span className="font-medium">Save Settings</span> to apply.</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
