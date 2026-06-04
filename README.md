@@ -50,7 +50,7 @@ school-erp/
 ```
 
 ## Development Phases
-- **Phase 1** ✅ Project setup, Auth, RBAC, Dashboard
+- **Phase 1** Project setup, Auth, RBAC, Dashboard
 - **Phase 2** Student & Teacher & Academic management
 - **Phase 3** Billing, Invoices, Payments
 - **Phase 4** Examinations, Results, PDFs
