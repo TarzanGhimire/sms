@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
+import { useBranding } from '@/hooks/use-branding';
 
 interface NavItem {
   label: string;
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const branding = useBranding();
 
   const filtered = navItems.filter(
     (item) => !item.roles || item.roles.includes(user?.role ?? ''),
@@ -42,10 +44,17 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-sidebar flex flex-col h-full border-r border-sidebar-border">
       <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
-        <div className="bg-sidebar-primary rounded-lg p-1.5">
-          <School className="h-5 w-5 text-sidebar-primary-foreground" />
-        </div>
-        <span className="font-bold text-sidebar-foreground text-sm">School ERP</span>
+        {branding?.logoUrl ? (
+          <div className="h-8 w-8 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={branding.logoUrl} alt="School logo" className="max-h-full max-w-full object-contain" />
+          </div>
+        ) : (
+          <div className="bg-sidebar-primary rounded-lg p-1.5 shrink-0">
+            <School className="h-5 w-5 text-sidebar-primary-foreground" />
+          </div>
+        )}
+        <span className="font-bold text-sidebar-foreground text-sm truncate">{branding?.schoolName ?? 'School ERP'}</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

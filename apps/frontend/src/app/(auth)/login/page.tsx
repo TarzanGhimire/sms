@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuthStore } from '@/store/auth-store';
 import { authService } from '@/services/auth.service';
 import { useToast } from '@/hooks/use-toast';
+import { useBranding } from '@/hooks/use-branding';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const { toast } = useToast();
+  const branding = useBranding();
 
   const {
     register,
@@ -51,11 +53,18 @@ export default function LoginPage() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center space-y-3">
         <div className="flex justify-center">
-          <div className="bg-primary rounded-full p-3">
-            <GraduationCap className="h-8 w-8 text-primary-foreground" />
-          </div>
+          {branding?.logoUrl ? (
+            <div className="h-16 w-16 rounded-full overflow-hidden bg-muted/40 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={branding.logoUrl} alt="School logo" className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : (
+            <div className="bg-primary rounded-full p-3">
+              <GraduationCap className="h-8 w-8 text-primary-foreground" />
+            </div>
+          )}
         </div>
-        <CardTitle className="text-2xl font-bold">School ERP</CardTitle>
+        <CardTitle className="text-2xl font-bold">{branding?.schoolName ?? 'School ERP'}</CardTitle>
         <CardDescription>Sign in to your account to continue</CardDescription>
       </CardHeader>
       <CardContent>
